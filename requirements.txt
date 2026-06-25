@@ -1,0 +1,4 @@
+# 📦 Dependências do Bot Discord
+# Instale com: pip install -r requirements.txt
+
+discord.py>=2.3.0

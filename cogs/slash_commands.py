@@ -50,12 +50,6 @@ class SlashCommands(commands.Cog):
                 ephemeral=True
             )
 
-        if scheduled_time < datetime.now():
-            return await interaction.response.send_message(
-                "⏰ A data/hora precisa ser no futuro!", 
-                ephemeral=True
-            )
-
         guild_messages = self.db.get_scheduled_messages(guild_id=interaction.guild_id)
         settings = self.db.get_guild_settings(interaction.guild_id)
         if len(guild_messages) >= settings['max_messages']:
@@ -121,12 +115,6 @@ class SlashCommands(commands.Cog):
                 "❌ Formato de data inválido!", ephemeral=True
             )
 
-        if scheduled_time < datetime.now():
-            return await interaction.response.send_message(
-                "⏰ A data precisa ser no futuro!", ephemeral=True
-            )
-
-        # Parse cor
         embed_color = Config.COLOR_PRIMARY
         if cor:
             try:
@@ -185,11 +173,6 @@ class SlashCommands(commands.Cog):
         if not scheduled_time:
             return await interaction.response.send_message(
                 "❌ Formato de data inválido!", ephemeral=True
-            )
-
-        if scheduled_time < datetime.now():
-            return await interaction.response.send_message(
-                "⏰ A data precisa ser no futuro!", ephemeral=True
             )
 
         full_content = f"@everyone\n\n{mensagem}"
@@ -506,7 +489,7 @@ class SlashCommands(commands.Cog):
             inline=False
         )
 
-        embed.set_footer(text="v2.1.0 | Slash Commands")
+        embed.set_footer(text="v2.1.3 | Slash Commands")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="horario", description="🕐 Mostra a hora atual")
@@ -518,7 +501,7 @@ class SlashCommands(commands.Cog):
             description=f"**{now.strftime('%d/%m/%Y %H:%M:%S')}**",
             color=Config.COLOR_INFO
         )
-        embed.set_footer(text="Fuso horário do servidor do bot")
+        embed.set_footer(text="Fuso horário: Brasília (UTC-3)")
         await interaction.response.send_message(embed=embed)
 
     # ═══════════════════════════════════════════════════════════

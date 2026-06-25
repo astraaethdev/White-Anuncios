@@ -55,9 +55,6 @@ class ScheduledMessages(commands.Cog):
         if not scheduled_time:
             return await ctx.send("❌ Formato inválido! Use: `DD/MM/YYYY HH:MM` ou `HH:MM`")
 
-        if scheduled_time < datetime.now():
-            return await ctx.send("⏰ A data/hora precisa ser no futuro!")
-
         guild_messages = self.db.get_scheduled_messages(guild_id=ctx.guild.id)
         settings = self.db.get_guild_settings(ctx.guild.id)
         if len(guild_messages) >= settings['max_messages']:
@@ -87,9 +84,6 @@ class ScheduledMessages(commands.Cog):
         scheduled_time = parse_datetime(datetime_str)
         if not scheduled_time:
             return await ctx.send("❌ Formato de data inválido!")
-
-        if scheduled_time < datetime.now():
-            return await ctx.send("⏰ A data precisa ser no futuro!")
 
         await ctx.send("🎨 **Wizard de Embed** - Responda as perguntas (digite `cancelar` a qualquer momento)")
 
@@ -197,9 +191,6 @@ class ScheduledMessages(commands.Cog):
         scheduled_time = parse_datetime(datetime_str)
         if not scheduled_time:
             return await ctx.send("❌ Formato de data inválido!")
-
-        if scheduled_time < datetime.now():
-            return await ctx.send("⏰ A data precisa ser no futuro!")
 
         full_content = f"@everyone\n\n{content}"
 

@@ -1,7 +1,7 @@
 """
 🤖 Discord Bot Avançado - Sistema de Agendamento de Mensagens
 Autor: Bot Avançado
-Versão: 2.1.1 (Guild Sync)
+Versão: 2.1.2 (Guild + Global Sync)
 """
 
 import discord
@@ -72,13 +72,24 @@ class AdvancedBot(commands.Bot):
             except Exception as e:
                 logger.error(f"❌ Erro ao carregar {cog}: {e}")
 
-        # Sincronizar slash commands na guild específica (INSTANTÂNEO)
+        # ═══════════════════════════════════════════════════════════
+        # SYNC INSTANTÂNEO NA GUILD (aparece na hora)
+        # ═══════════════════════════════════════════════════════════
         try:
             guild = discord.Object(id=GUILD_ID)
-            synced = await self.tree.sync(guild=guild)
-            logger.info(f"🔄 Slash commands sincronizados na guild {GUILD_ID}: {len(synced)} comandos")
+            synced_guild = await self.tree.sync(guild=guild)
+            logger.info(f"⚡ Guild sync ({GUILD_ID}): {len(synced_guild)} comandos instantâneos")
         except Exception as e:
-            logger.error(f"❌ Erro ao sincronizar slash commands na guild: {e}")
+            logger.error(f"❌ Erro no guild sync: {e}")
+
+        # ═══════════════════════════════════════════════════════════
+        # SYNC GLOBAL (aparece em todos os servidores, mas demora ~1h)
+        # ═══════════════════════════════════════════════════════════
+        try:
+            synced_global = await self.tree.sync()
+            logger.info(f"🌍 Global sync: {len(synced_global)} comandos (pode demorar até 1h para aparecer)")
+        except Exception as e:
+            logger.error(f"❌ Erro no global sync: {e}")
 
         # Iniciar scheduler
         self.scheduler.start()

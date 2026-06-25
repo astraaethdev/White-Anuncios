@@ -1,7 +1,7 @@
 """
 🤖 Discord Bot Avançado - Sistema de Agendamento de Mensagens
 Autor: Bot Avançado
-Versão: 2.0.1
+Versão: 2.1.0 (Slash Commands)
 """
 
 import discord
@@ -50,7 +50,6 @@ class AdvancedBot(commands.Bot):
 
     async def setup_hook(self):
         """Carrega extensões e inicializa sistemas"""
-        # Criar pasta data se não existir
         Path("data").mkdir(parents=True, exist_ok=True)
 
         # Carregar cogs
@@ -59,7 +58,8 @@ class AdvancedBot(commands.Bot):
             'cogs.announcements', 
             'cogs.management',
             'cogs.utilities',
-            'cogs.events'
+            'cogs.events',
+            'cogs.slash_commands'
         ]
 
         for cog in cogs:
@@ -68,6 +68,13 @@ class AdvancedBot(commands.Bot):
                 logger.info(f"✅ Cog carregado: {cog}")
             except Exception as e:
                 logger.error(f"❌ Erro ao carregar {cog}: {e}")
+
+        # Sincronizar slash commands (global)
+        try:
+            synced = await self.tree.sync()
+            logger.info(f"🔄 Slash commands sincronizados: {len(synced)} comandos")
+        except Exception as e:
+            logger.error(f"❌ Erro ao sincronizar slash commands: {e}")
 
         # Iniciar scheduler
         self.scheduler.start()
@@ -79,15 +86,14 @@ class AdvancedBot(commands.Bot):
         logger.info(f"📊 Servidores: {len(self.guilds)}")
         logger.info(f"👥 Usuários: {sum(g.member_count for g in self.guilds)}")
 
-        # Status personalizado
         activity = discord.Activity(
             type=discord.ActivityType.watching,
-            name=f"{Config.PREFIX}ajuda | Agendador de Mensagens"
+            name="/ajuda | Agendador de Mensagens"
         )
         await self.change_presence(activity=activity)
 
     async def on_command_error(self, ctx, error):
-        """Tratamento global de erros"""
+        """Tratamento global de erros (prefix commands)"""
         if isinstance(error, commands.CommandNotFound):
             return
         elif isinstance(error, commands.MissingPermissions):
@@ -96,7 +102,7 @@ class AdvancedBot(commands.Bot):
             await ctx.send(f"❌ Argumento faltando. Use: `{Config.PREFIX}ajuda {ctx.command.name}`")
         else:
             logger.error(f"Erro no comando {ctx.command}: {error}")
-            await ctx.send("❌ Ocorreu um erro inesperado. Os desenvolvedores foram notificados.")
+            await ctx.send("❌ Ocorreu um erro inesperado.")
 
 # Inicialização
 if __name__ == "__main__":

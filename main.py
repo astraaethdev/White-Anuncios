@@ -1,7 +1,7 @@
 """
 🤖 Discord Bot Avançado - Sistema de Agendamento de Mensagens
 Autor: Bot Avançado
-Versão: 2.0.0
+Versão: 2.0.1
 """
 
 import discord
@@ -16,6 +16,9 @@ from pathlib import Path
 from utils.config import Config
 from utils.database import Database
 from utils.scheduler import MessageScheduler
+
+# Criar pasta data se não existir (ESSENCIAL para Railway!)
+Path("data").mkdir(parents=True, exist_ok=True)
 
 # Configuração de logging
 logging.basicConfig(
@@ -48,7 +51,7 @@ class AdvancedBot(commands.Bot):
     async def setup_hook(self):
         """Carrega extensões e inicializa sistemas"""
         # Criar pasta data se não existir
-        Path("data").mkdir(exist_ok=True)
+        Path("data").mkdir(parents=True, exist_ok=True)
 
         # Carregar cogs
         cogs = [
@@ -102,6 +105,6 @@ if __name__ == "__main__":
     try:
         bot.run(Config.TOKEN)
     except discord.LoginFailure:
-        logger.critical("❌ TOKEN inválido! Verifique seu .env")
+        logger.critical("❌ TOKEN inválido! Verifique sua variável DISCORD_TOKEN no Railway")
     except Exception as e:
         logger.critical(f"❌ Erro fatal: {e}")

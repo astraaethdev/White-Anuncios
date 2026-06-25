@@ -1,0 +1,155 @@
+"""
+⏰ Sistema de Agendamento Inteligente
+"""
+
+import discord
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from typing import Optional
+from discord.ext import tasks
+
+logger = logging.getLogger('DiscordBot')
+
+class MessageScheduler:
+    """Gerenciador de agendamento de mensagens"""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.db = bot.db
+        self._running = False
+
+    def start(self):
+        """Inicia o loop de verificação"""
+        if not self._running:
+            self.check_scheduled_messages.start()
+            self._running = True
+            logger.info("✅ Scheduler iniciado")
+
+    def stop(self):
+        """Para o loop de verificação"""
+        if self._running:
+            self.check_scheduled_messages.cancel()
+            self._running = False
+            logger.info("🛑 Scheduler parado")
+
+    @tasks.loop(seconds=30)
+    async def check_scheduled_messages(self):
+        """Verifica e envia mensagens agendadas a cada 30 segundos"""
+        try:
+            now = datetime.now()
+            messages = self.db.get_scheduled_messages(active_only=True)
+
+            for msg in messages:
+                scheduled_time = datetime.fromisoformat(msg['scheduled_time'])
+
+                # Verifica se é hora de enviar
+                if scheduled_time <= now:
+                    await self._send_message(msg)
+
+        except Exception as e:
+            logger.error(f"Erro no scheduler: {e}")
+
+    async def _send_message(self, msg: dict):
+        """Envia uma mensagem agendada"""
+        try:
+            channel = self.bot.get_channel(msg['channel_id'])
+            if not channel:
+                logger.warning(f"Canal {msg['channel_id']} não encontrado")
+                self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 
+                                   'failed', 'Canal não encontrado')
+                return
+
+            # Preparar embed se existir
+            embed = None
+            if msg['embed_data']:
+                try:
+                    import json
+                    embed_data = json.loads(msg['embed_data'])
+                    embed = discord.Embed.from_dict(embed_data)
+                except:
+                    pass
+
+            # Enviar mensagem
+            if embed:
+                await channel.send(content=msg['content'] or None, embed=embed)
+            else:
+                await channel.send(content=msg['content'])
+
+            # Atualizar contador
+            send_count = (msg['send_count'] or 0) + 1
+            self.db.update_message(
+                msg['id'], 
+                last_sent=datetime.now().isoformat(),
+                send_count=send_count
+            )
+
+            # Log de sucesso
+            self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 'success')
+            logger.info(f"✅ Mensagem {msg['id']} enviada no canal {msg['channel_id']}")
+
+            # Tratar recorrência
+            await self._handle_recurrence(msg)
+
+        except discord.Forbidden:
+            logger.error(f"❌ Sem permissão para enviar no canal {msg['channel_id']}")
+            self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 
+                               'failed', 'Sem permissão')
+        except Exception as e:
+            logger.error(f"❌ Erro ao enviar mensagem {msg['id']}: {e}")
+            self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 
+                               'failed', str(e))
+
+    async def _handle_recurrence(self, msg: dict):
+        """Processa recorrência da mensagem"""
+        recurrence = msg['recurrence']
+
+        if recurrence == 'once':
+            # Desativa mensagem única
+            self.db.update_message(msg['id'], is_active=0)
+            logger.info(f"📝 Mensagem {msg['id']} (única) desativada após envio")
+
+        elif recurrence == 'daily':
+            # Próximo dia
+            next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(days=1)
+            self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
+            logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
+
+        elif recurrence == 'weekly':
+            # Próxima semana
+            next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(weeks=1)
+            self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
+            logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
+
+        elif recurrence == 'custom':
+            # Recorrência personalizada
+            try:
+                import json
+                data = json.loads(msg['recurrence_data'] or '{}')
+                interval_days = data.get('interval_days', 1)
+                next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(days=interval_days)
+                self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
+                logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
+            except:
+                self.db.update_message(msg['id'], is_active=0)
+
+        elif recurrence == 'count':
+            # Limite de envios
+            try:
+                import json
+                data = json.loads(msg['recurrence_data'] or '{}')
+                max_count = data.get('max_count', 1)
+
+                if msg['send_count'] >= max_count:
+                    self.db.update_message(msg['id'], is_active=0)
+                    logger.info(f"📝 Mensagem {msg['id']} atingiu limite de {max_count} envios")
+                else:
+                    next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(days=1)
+                    self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
+            except:
+                self.db.update_message(msg['id'], is_active=0)
+
+    @check_scheduled_messages.before_loop
+    async def before_check(self):
+        """Espera o bot estar pronto antes de iniciar"""
+        await self.bot.wait_until_ready()

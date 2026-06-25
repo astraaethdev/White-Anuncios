@@ -3,12 +3,12 @@
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 def parse_datetime(date_string: str) -> Optional[datetime]:
     """
-    Parse de data/hora em vários formatos
+    Parse de data/hora em vários formatos (fuso horário de Brasília)
     Formatos suportados:
     - DD/MM/YYYY HH:MM
     - DD-MM-YYYY HH:MM
@@ -27,13 +27,9 @@ def parse_datetime(date_string: str) -> Optional[datetime]:
         try:
             result = datetime.strptime(date_string, fmt)
             if fmt == "%H:%M":
-                # Usa data de hoje
+                # Usa data de hoje (Brasília)
                 now = datetime.now()
                 result = result.replace(year=now.year, month=now.month, day=now.day)
-                # Se já passou, agenda para amanhã
-                if result < now:
-                    from datetime import timedelta
-                    result += timedelta(days=1)
             return result
         except ValueError:
             continue

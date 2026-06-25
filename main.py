@@ -1,7 +1,7 @@
 """
 🤖 Discord Bot Avançado - Sistema de Agendamento de Mensagens
 Autor: Bot Avançado
-Versão: 2.1.0 (Slash Commands)
+Versão: 2.1.1 (Guild Sync)
 """
 
 import discord
@@ -16,6 +16,9 @@ from pathlib import Path
 from utils.config import Config
 from utils.database import Database
 from utils.scheduler import MessageScheduler
+
+# ID do servidor para sync instantâneo dos slash commands
+GUILD_ID = 1508876618196713532
 
 # Criar pasta data se não existir (ESSENCIAL para Railway!)
 Path("data").mkdir(parents=True, exist_ok=True)
@@ -69,12 +72,13 @@ class AdvancedBot(commands.Bot):
             except Exception as e:
                 logger.error(f"❌ Erro ao carregar {cog}: {e}")
 
-        # Sincronizar slash commands (global)
+        # Sincronizar slash commands na guild específica (INSTANTÂNEO)
         try:
-            synced = await self.tree.sync()
-            logger.info(f"🔄 Slash commands sincronizados: {len(synced)} comandos")
+            guild = discord.Object(id=GUILD_ID)
+            synced = await self.tree.sync(guild=guild)
+            logger.info(f"🔄 Slash commands sincronizados na guild {GUILD_ID}: {len(synced)} comandos")
         except Exception as e:
-            logger.error(f"❌ Erro ao sincronizar slash commands: {e}")
+            logger.error(f"❌ Erro ao sincronizar slash commands na guild: {e}")
 
         # Iniciar scheduler
         self.scheduler.start()

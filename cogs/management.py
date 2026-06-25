@@ -1,23 +1,21 @@
 """
-⚙️ Cog: Gerenciamento do Servidor
-Configurações, logs e estatísticas
+⚙️ Cog: Gerenciamento do Servidor (Prefix Commands)
 """
 
 import discord
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from utils.config import Config
-from utils.helpers import create_progress_bar
 
 class Management(commands.Cog):
-    """Gerenciamento do servidor e configurações do bot"""
+    """Gerenciamento via prefix commands"""
 
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
 
-    @commands.group(name="config", aliases=["cfg", "configurar"], invoke_without_command=True)
+    @commands.group(name="cfg", aliases=["configurar"], invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def config_group(self, ctx):
         """⚙️ Configurações do bot no servidor"""
@@ -38,9 +36,9 @@ class Management(commands.Cog):
         embed.add_field(
             name="Comandos:",
             value=(
-                "`!config log #canal` - Definir canal de logs\n"
-                "`!config limite <número>` - Limite de mensagens\n"
-                "`!config everyone <on/off>` - Permitir @everyone"
+                "`!cfg log #canal` - Definir canal de logs\n"
+                "`!cfg limite <número>` - Limite de mensagens\n"
+                "`!cfg everyone <on/off>` - Permitir @everyone"
             ),
             inline=False
         )
@@ -50,20 +48,14 @@ class Management(commands.Cog):
     @config_group.command(name="log")
     @commands.has_permissions(administrator=True)
     async def set_log_channel(self, ctx, channel: discord.TextChannel):
-        """
-        📝 Define o canal de logs
-        Uso: !config log #canal
-        """
+        """📝 Define o canal de logs"""
         self.db.set_guild_settings(ctx.guild.id, log_channel_id=channel.id)
         await ctx.send(f"✅ Canal de logs definido para {channel.mention}!")
 
     @config_group.command(name="limite")
     @commands.has_permissions(administrator=True)
     async def set_limit(self, ctx, limit: int):
-        """
-        📊 Define o limite de mensagens agendadas
-        Uso: !config limite 50
-        """
+        """📊 Define o limite de mensagens agendadas"""
         if limit < 1 or limit > 500:
             return await ctx.send("❌ Limite deve ser entre 1 e 500!")
 
@@ -73,20 +65,15 @@ class Management(commands.Cog):
     @config_group.command(name="everyone")
     @commands.has_permissions(administrator=True)
     async def set_everyone(self, ctx, status: str):
-        """
-        📢 Ativa/desativa permissão de @everyone
-        Uso: !config everyone on
-        """
+        """📢 Ativa/desativa permissão de @everyone"""
         allow = 1 if status.lower() in ['on', 'sim', 'yes', 'true'] else 0
         self.db.set_guild_settings(ctx.guild.id, allow_everyone=allow)
         await ctx.send(f"✅ Allow @everyone: {'✅ Ativado' if allow else '❌ Desativado'}")
 
-    @commands.command(name="stats", aliases=["estatisticas", "estatisticas"])
+    @commands.command(name="estatisticas", aliases=["estats"])
     @commands.has_permissions(manage_messages=True)
     async def stats(self, ctx):
-        """
-        📊 Estatísticas do bot no servidor
-        """
+        """📊 Estatísticas do bot no servidor"""
         messages = self.db.get_scheduled_messages(guild_id=ctx.guild.id, active_only=False)
         active = len([m for m in messages if m['is_active']])
         inactive = len([m for m in messages if not m['is_active']])
@@ -118,10 +105,7 @@ class Management(commands.Cog):
     @commands.command(name="limpar", aliases=["clean", "purge"])
     @commands.has_permissions(administrator=True)
     async def clean_old(self, ctx, days: int = 30):
-        """
-        🧹 Remove mensagens antigas inativas
-        Uso: !limpar 30
-        """
+        """🧹 Remove mensagens antigas inativas"""
         if days < 1:
             return await ctx.send("❌ Dias deve ser maior que 0!")
 

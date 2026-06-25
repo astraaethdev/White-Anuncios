@@ -1,23 +1,22 @@
 """
-📢 Cog: Anúncios Avançados
-Sistema de anúncios com templates, confirmação e estatísticas
+📢 Cog: Anúncios Avançados (Prefix Commands)
 """
 
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from utils.config import Config
-from utils.helpers import parse_datetime, format_datetime, truncate_text
+from utils.helpers import truncate_text
 
 class Announcements(commands.Cog):
-    """Sistema avançado de anúncios"""
+    """Anúncios via prefix commands"""
 
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
 
-    @commands.group(name="anuncio", aliases=["announce", "an"], invoke_without_command=True)
+    @commands.group(name="anunciar", aliases=["announce"], invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def announce_group(self, ctx):
         """📢 Sistema de anúncios avançado"""
@@ -29,10 +28,9 @@ class Announcements(commands.Cog):
         embed.add_field(
             name="Comandos:",
             value=(
-                "`!anuncio rapido` - Anúncio rápido\n"
-                "`!anuncio embed` - Anúncio com embed\n"
-                "`!anuncio template` - Usar template\n"
-                "`!anuncio templates` - Ver templates disponíveis"
+                "`!anunciar rapido` - Anúncio rápido\n"
+                "`!anunciar embed` - Anúncio com embed\n"
+                "`!anunciar template` - Usar template"
             ),
             inline=False
         )
@@ -41,10 +39,7 @@ class Announcements(commands.Cog):
     @announce_group.command(name="rapido", aliases=["quick", "r"])
     @commands.has_permissions(administrator=True)
     async def quick_announce(self, ctx, channel: discord.TextChannel, *, content: str):
-        """
-        ⚡ Envia um anúncio rápido com @everyone
-        Uso: !anuncio rapido #canal mensagem
-        """
+        """⚡ Envia um anúncio rápido com @everyone"""
         embed = discord.Embed(
             title="📢 Anúncio",
             description=content,
@@ -59,27 +54,21 @@ class Announcements(commands.Cog):
     @announce_group.command(name="embed", aliases=["e"])
     @commands.has_permissions(administrator=True)
     async def embed_announce(self, ctx, channel: discord.TextChannel):
-        """
-        🎨 Cria um anúncio com embed interativo
-        Uso: !anuncio embed #canal
-        """
+        """🎨 Cria um anúncio com embed interativo"""
         await ctx.send("🎨 **Wizard de Anúncio** - Responda as perguntas")
 
-        # Título
         await ctx.send("📝 Digite o **título** do anúncio:")
         try:
             title_msg = await self.bot.wait_for('message', timeout=120.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
         except asyncio.TimeoutError:
             return await ctx.send("⏰ Tempo esgotado!")
 
-        # Descrição
         await ctx.send("📝 Digite a **descrição** do anúncio:")
         try:
             desc_msg = await self.bot.wait_for('message', timeout=180.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
         except asyncio.TimeoutError:
             return await ctx.send("⏰ Tempo esgotado!")
 
-        # Cor
         await ctx.send("🎨 Digite a **cor** (hex, ex: #FF5733) ou `pular`:")
         try:
             color_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
@@ -93,21 +82,18 @@ class Announcements(commands.Cog):
             except:
                 pass
 
-        # Imagem
         await ctx.send("🖼️ Envie uma **URL de imagem** ou `pular`:")
         try:
             img_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
         except asyncio.TimeoutError:
             img_msg = type('obj', (object,), {'content': 'pular'})
 
-        # Thumbnail
         await ctx.send("🖼️ Envie uma **URL de thumbnail** ou `pular`:")
         try:
             thumb_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
         except asyncio.TimeoutError:
             thumb_msg = type('obj', (object,), {'content': 'pular'})
 
-        # Criar embed
         embed = discord.Embed(
             title=title_msg.content,
             description=desc_msg.content,
@@ -123,7 +109,6 @@ class Announcements(commands.Cog):
 
         embed.set_footer(text=f"Por {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
-        # Preview
         await ctx.send("👁️ **Preview:**", embed=embed)
         await ctx.send("✅ Deseja enviar? Digite **enviar** para confirmar:")
 
@@ -141,14 +126,11 @@ class Announcements(commands.Cog):
     @announce_group.command(name="template", aliases=["t"])
     @commands.has_permissions(administrator=True)
     async def template_announce(self, ctx, channel: discord.TextChannel, template_name: str, *, variables: str = ""):
-        """
-        📋 Usa um template de anúncio
-        Uso: !anuncio template #canal nome_template var1=valor1;var2=valor2
-        """
+        """📋 Usa um template de anúncio"""
         templates = {
             "boas_vindas": {
                 "title": "🎉 Bem-vindo ao {server}!",
-                "description": "Olá {user}! Seja muito bem-vindo ao nosso servidor.\n\nLeia as regras em {rules_channel} e aproveite!",
+                "description": "Olá {user}! Seja muito bem-vindo ao nosso servidor.\n\nLeia as regras e aproveite!",
                 "color": 0x57F287
             },
             "evento": {
@@ -174,7 +156,6 @@ class Announcements(commands.Cog):
 
         template = templates[template_name]
 
-        # Parse variáveis
         vars_dict = {}
         if variables:
             for pair in variables.split(';'):
@@ -182,7 +163,6 @@ class Announcements(commands.Cog):
                     key, value = pair.split('=', 1)
                     vars_dict[key.strip()] = value.strip()
 
-        # Substituir variáveis
         title = template["title"]
         description = template["description"]
 
@@ -190,7 +170,6 @@ class Announcements(commands.Cog):
             title = title.replace(f"{{{key}}}", value)
             description = description.replace(f"{{{key}}}", value)
 
-        # Variáveis padrão
         title = title.replace("{server}", ctx.guild.name)
         title = title.replace("{user}", ctx.author.mention)
 
@@ -215,36 +194,6 @@ class Announcements(commands.Cog):
             await ctx.send(f"✅ Anúncio enviado em {channel.mention}!")
         else:
             await ctx.send("❌ Envio cancelado.")
-
-    @announce_group.command(name="templates", aliases=["list"])
-    @commands.has_permissions(administrator=True)
-    async def list_templates(self, ctx):
-        """
-        📋 Lista templates disponíveis
-        """
-        embed = discord.Embed(
-            title="📋 Templates de Anúncio",
-            description="Templates disponíveis para uso rápido:",
-            color=Config.COLOR_INFO
-        )
-
-        templates_info = {
-            "boas_vindas": "Mensagem de boas-vindas para novos membros",
-            "evento": "Anúncio de evento com data e local",
-            "atualizacao": "Notas de atualização do servidor",
-            "sorteio": "Anúncio de sorteio com reações"
-        }
-
-        for name, desc in templates_info.items():
-            embed.add_field(name=f"📌 `{name}`", value=desc, inline=False)
-
-        embed.add_field(
-            name="📖 Uso:",
-            value="`!anuncio template #canal nome_template var1=valor1;var2=valor2`",
-            inline=False
-        )
-
-        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Announcements(bot))

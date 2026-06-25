@@ -1,29 +1,24 @@
 """
-🛠️ Cog: Utilitários
-Comandos úteis e helpers
+🛠️ Cog: Utilitários (Prefix Commands)
 """
 
 import discord
 from discord.ext import commands
-import asyncio
 from datetime import datetime
 
 from utils.config import Config
 from utils.helpers import parse_datetime, format_datetime
 
 class Utilities(commands.Cog):
-    """Comandos utilitários"""
+    """Comandos utilitários via prefix"""
 
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="ping")
     async def ping(self, ctx):
-        """
-        🏓 Verifica a latência do bot
-        """
+        """🏓 Verifica a latência do bot"""
         latency = round(self.bot.latency * 1000)
-
         color = Config.COLOR_SUCCESS if latency < 100 else Config.COLOR_WARNING if latency < 300 else Config.COLOR_ERROR
 
         embed = discord.Embed(
@@ -37,10 +32,7 @@ class Utilities(commands.Cog):
 
     @commands.command(name="ajuda", aliases=["help", "h"])
     async def help_command(self, ctx, command_name: str = None):
-        """
-        ❓ Mostra a ajuda do bot
-        Uso: !ajuda [comando]
-        """
+        """❓ Mostra a ajuda do bot"""
         if command_name:
             command = self.bot.get_command(command_name)
             if not command:
@@ -57,18 +49,18 @@ class Utilities(commands.Cog):
         else:
             embed = discord.Embed(
                 title="🤖 Bot de Agendamento - Ajuda",
-                description="Bot avançado para agendamento de mensagens automáticas no Discord!",
+                description="Bot avançado para agendamento de mensagens automáticas!",
                 color=Config.COLOR_PRIMARY
             )
 
             embed.add_field(
-                name="📅 Agendamento",
+                name="📅 Agendamento (Prefix)",
                 value=(
                     "`!agendar` - Menu principal\n"
-                    "`!agendar texto` - Mensagem de texto\n"
-                    "`!agendar embed` - Mensagem com embed\n"
-                    "`!agendar anuncio` - Anúncio com @everyone\n"
-                    "`!agendar lista` - Listar agendadas\n"
+                    "`!agendar texto #canal data mensagem` - Texto\n"
+                    "`!agendar embed #canal data` - Wizard embed\n"
+                    "`!agendar anuncio #canal data mensagem` - Anúncio\n"
+                    "`!agendar lista` - Listar\n"
                     "`!agendar info <id>` - Detalhes\n"
                     "`!agendar editar <id>` - Editar\n"
                     "`!agendar remover <id>` - Remover"
@@ -77,11 +69,25 @@ class Utilities(commands.Cog):
             )
 
             embed.add_field(
+                name="⚡ Slash Commands (/)",
+                value=(
+                    "`/agendar-texto` - Texto rápido\n"
+                    "`/agendar-embed` - Embed\n"
+                    "`/agendar-anuncio` - Anúncio\n"
+                    "`/lista` - Listar\n"
+                    "`/info` - Detalhes\n"
+                    "`/remover` - Remover\n"
+                    "`/anuncio-rapido` - Anúncio instantâneo"
+                ),
+                inline=False
+            )
+
+            embed.add_field(
                 name="📢 Anúncios",
                 value=(
-                    "`!anuncio rapido` - Anúncio rápido\n"
-                    "`!anuncio embed` - Anúncio com embed\n"
-                    "`!anuncio template` - Usar template"
+                    "`!anunciar rapido #canal mensagem` - Rápido\n"
+                    "`!anunciar embed #canal` - Embed\n"
+                    "`!anunciar template #canal nome vars` - Template"
                 ),
                 inline=False
             )
@@ -89,8 +95,8 @@ class Utilities(commands.Cog):
             embed.add_field(
                 name="⚙️ Gerenciamento",
                 value=(
-                    "`!config` - Configurações\n"
-                    "`!stats` - Estatísticas\n"
+                    "`!cfg` - Configurações\n"
+                    "`!estatisticas` - Estatísticas\n"
                     "`!limpar` - Limpar antigas"
                 ),
                 inline=False
@@ -105,14 +111,12 @@ class Utilities(commands.Cog):
                 inline=False
             )
 
-            embed.set_footer(text=f"Prefixo: {Config.PREFIX} | v2.0.0")
+            embed.set_footer(text="Prefixo: ! | v2.1.0")
             await ctx.send(embed=embed)
 
     @commands.command(name="horario", aliases=["time", "hora"])
     async def current_time(self, ctx):
-        """
-        🕐 Mostra a hora atual do bot
-        """
+        """🕐 Mostra a hora atual do bot"""
         now = datetime.now()
         embed = discord.Embed(
             title="🕐 Hora Atual",

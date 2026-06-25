@@ -18,7 +18,7 @@ class ScheduledMessages(commands.Cog):
         self.bot = bot
         self.db = bot.db
 
-    @commands.group(name="agendar", aliases=["schedule", "ag"], invoke_without_command=True)
+    @commands.group(name="agendar", invoke_without_command=True)
     @commands.has_permissions(manage_messages=True)
     async def schedule_group(self, ctx):
         """📅 Sistema de agendamento de mensagens"""
@@ -41,13 +41,13 @@ class ScheduledMessages(commands.Cog):
             inline=False
         )
         embed.add_field(
-            name="📖 Slash Commands também disponíveis!",
+            name="⚡ Slash Commands também disponíveis!",
             value="Use `/` para ver os comandos modernos",
             inline=False
         )
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="texto", aliases=["text", "t"])
+    @schedule_group.command(name="texto")
     @commands.has_permissions(manage_messages=True)
     async def schedule_text(self, ctx, channel: discord.TextChannel, datetime_str: str, *, content: str):
         """📝 Agenda uma mensagem de texto"""
@@ -80,7 +80,7 @@ class ScheduledMessages(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="embed", aliases=["e"])
+    @schedule_group.command(name="embed")
     @commands.has_permissions(manage_messages=True)
     async def schedule_embed(self, ctx, channel: discord.TextChannel, datetime_str: str):
         """🎨 Agenda uma mensagem com embed interativo"""
@@ -190,7 +190,7 @@ class ScheduledMessages(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="anuncio", aliases=["announcement", "a"])
+    @schedule_group.command(name="anuncio")
     @commands.has_permissions(administrator=True)
     async def schedule_announcement(self, ctx, channel: discord.TextChannel, datetime_str: str, *, content: str):
         """📢 Agenda um anúncio com @everyone"""
@@ -220,7 +220,7 @@ class ScheduledMessages(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="lista", aliases=["list", "ls"])
+    @schedule_group.command(name="lista")
     @commands.has_permissions(manage_messages=True)
     async def list_scheduled(self, ctx):
         """📋 Lista todas as mensagens agendadas"""
@@ -253,7 +253,7 @@ class ScheduledMessages(commands.Cog):
         embed.set_footer(text=f"Servidor: {ctx.guild.name}")
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="info", aliases=["detalhes", "i"])
+    @schedule_group.command(name="info")
     @commands.has_permissions(manage_messages=True)
     async def message_info(self, ctx, message_id: int):
         """ℹ️ Mostra detalhes de uma mensagem agendada"""
@@ -281,7 +281,7 @@ class ScheduledMessages(commands.Cog):
         embed.set_footer(text=f"Criado em: {msg['created_at']}")
         await ctx.send(embed=embed)
 
-    @schedule_group.command(name="editar", aliases=["edit", "e"])
+    @schedule_group.command(name="editar")
     @commands.has_permissions(manage_messages=True)
     async def edit_message(self, ctx, message_id: int):
         """✏️ Edita uma mensagem agendada"""
@@ -347,7 +347,7 @@ class ScheduledMessages(commands.Cog):
         else:
             await ctx.send("❌ Edição cancelada.")
 
-    @schedule_group.command(name="remover", aliases=["delete", "del", "rm"])
+    @schedule_group.command(name="remover")
     @commands.has_permissions(manage_messages=True)
     async def remove_message(self, ctx, message_id: int):
         """🗑️ Remove uma mensagem agendada"""

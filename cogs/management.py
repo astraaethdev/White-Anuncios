@@ -15,7 +15,7 @@ class Management(commands.Cog):
         self.bot = bot
         self.db = bot.db
 
-    @commands.group(name="cfg", aliases=["configurar"], invoke_without_command=True)
+    @commands.group(name="cfg", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def config_group(self, ctx):
         """⚙️ Configurações do bot no servidor"""
@@ -70,7 +70,7 @@ class Management(commands.Cog):
         self.db.set_guild_settings(ctx.guild.id, allow_everyone=allow)
         await ctx.send(f"✅ Allow @everyone: {'✅ Ativado' if allow else '❌ Desativado'}")
 
-    @commands.command(name="estatisticas", aliases=["estats"])
+    @commands.command(name="estatisticas")
     @commands.has_permissions(manage_messages=True)
     async def stats(self, ctx):
         """📊 Estatísticas do bot no servidor"""
@@ -102,7 +102,7 @@ class Management(commands.Cog):
         embed.set_footer(text=f"Servidor: {ctx.guild.name}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
         await ctx.send(embed=embed)
 
-    @commands.command(name="limpar", aliases=["clean", "purge"])
+    @commands.command(name="limpar")
     @commands.has_permissions(administrator=True)
     async def clean_old(self, ctx, days: int = 30):
         """🧹 Remove mensagens antigas inativas"""

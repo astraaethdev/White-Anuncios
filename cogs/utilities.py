@@ -30,7 +30,7 @@ class Utilities(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="ajuda", aliases=["help", "h"])
+    @commands.command(name="ajuda")
     async def help_command(self, ctx, command_name: str = None):
         """❓ Mostra a ajuda do bot"""
         if command_name:
@@ -43,7 +43,7 @@ class Utilities(commands.Cog):
                 description=command.help or "Sem descrição disponível.",
                 color=Config.COLOR_INFO
             )
-            embed.add_field(name="Aliases", value=", ".join(f"`{a}`" for a in command.aliases) if command.aliases else "Nenhum", inline=False)
+            embed.add_field(name="Aliases", value="Nenhum", inline=False)
 
             await ctx.send(embed=embed)
         else:
@@ -111,10 +111,10 @@ class Utilities(commands.Cog):
                 inline=False
             )
 
-            embed.set_footer(text="Prefixo: ! | v2.1.0")
+            embed.set_footer(text="Prefixo: ! | v2.1.2")
             await ctx.send(embed=embed)
 
-    @commands.command(name="horario", aliases=["time", "hora"])
+    @commands.command(name="horario")
     async def current_time(self, ctx):
         """🕐 Mostra a hora atual do bot"""
         now = datetime.now()

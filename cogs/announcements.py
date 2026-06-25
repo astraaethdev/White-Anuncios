@@ -16,7 +16,7 @@ class Announcements(commands.Cog):
         self.bot = bot
         self.db = bot.db
 
-    @commands.group(name="anunciar", aliases=["announce"], invoke_without_command=True)
+    @commands.group(name="anunciar", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def announce_group(self, ctx):
         """📢 Sistema de anúncios avançado"""
@@ -36,7 +36,7 @@ class Announcements(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @announce_group.command(name="rapido", aliases=["quick", "r"])
+    @announce_group.command(name="rapido")
     @commands.has_permissions(administrator=True)
     async def quick_announce(self, ctx, channel: discord.TextChannel, *, content: str):
         """⚡ Envia um anúncio rápido com @everyone"""
@@ -51,7 +51,7 @@ class Announcements(commands.Cog):
         await channel.send("@everyone", embed=embed)
         await ctx.send(f"✅ Anúncio enviado em {channel.mention}!")
 
-    @announce_group.command(name="embed", aliases=["e"])
+    @announce_group.command(name="embed")
     @commands.has_permissions(administrator=True)
     async def embed_announce(self, ctx, channel: discord.TextChannel):
         """🎨 Cria um anúncio com embed interativo"""
@@ -123,7 +123,7 @@ class Announcements(commands.Cog):
         else:
             await ctx.send("❌ Envio cancelado.")
 
-    @announce_group.command(name="template", aliases=["t"])
+    @announce_group.command(name="template")
     @commands.has_permissions(administrator=True)
     async def template_announce(self, ctx, channel: discord.TextChannel, template_name: str, *, variables: str = ""):
         """📋 Usa um template de anúncio"""

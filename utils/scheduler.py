@@ -37,14 +37,26 @@ class MessageScheduler:
     async def check_scheduled_messages(self):
         """Verifica e envia mensagens agendadas a cada 30 segundos"""
         try:
+            # Usar datetime.now() (hora local do servidor - Brasília UTC-3)
             now = datetime.now()
             messages = self.db.get_scheduled_messages(active_only=True)
 
             for msg in messages:
-                scheduled_time = datetime.fromisoformat(msg['scheduled_time'])
+                try:
+                    scheduled_time = datetime.fromisoformat(msg['scheduled_time'])
+                except:
+                    continue
 
-                # Verifica se é hora de enviar
-                if scheduled_time <= now:
+                # Comparar apenas ano, mês, dia, hora, minuto (ignorar segundos)
+                # Arredondar ambos para o minuto mais próximo
+                now_rounded = now.replace(second=0, microsecond=0)
+                scheduled_rounded = scheduled_time.replace(second=0, microsecond=0)
+
+                # Verifica se é hora de enviar (dentro da mesma janela de 1 minuto)
+                time_diff = (now_rounded - scheduled_rounded).total_seconds()
+
+                # Enviar se a diferença for entre 0 e 30 segundos (evita enviar antes)
+                if 0 <= time_diff <= 30:
                     await self._send_message(msg)
 
         except Exception as e:
@@ -86,7 +98,7 @@ class MessageScheduler:
 
             # Log de sucesso
             self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 'success')
-            logger.info(f"✅ Mensagem {msg['id']} enviada no canal {msg['channel_id']}")
+            logger.info(f"✅ Mensagem {msg['id']} enviada no canal {msg['channel_id']} às {datetime.now().strftime('%H:%M:%S')}")
 
             # Tratar recorrência
             await self._handle_recurrence(msg)

@@ -18,6 +18,7 @@ class MessageScheduler:
         self.bot = bot
         self.db = bot.db
         self._running = False
+        self._last_checked = {}  # Evita enviar a mesma mensagem 2x no mesmo minuto
 
     def start(self):
         """Inicia o loop de verificação"""
@@ -33,28 +34,36 @@ class MessageScheduler:
             self._running = False
             logger.info("🛑 Scheduler parado")
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=10)
     async def check_scheduled_messages(self):
-        """Verifica e envia mensagens agendadas a cada 30 segundos"""
+        """Verifica e envia mensagens agendadas a cada 10 segundos"""
         try:
             now = datetime.now()
             messages = self.db.get_scheduled_messages(active_only=True)
 
+            logger.info(f"⏰ Scheduler check - {now.strftime('%H:%M:%S')} - {len(messages)} mensagens ativas")
+
             for msg in messages:
                 try:
                     scheduled_time = datetime.fromisoformat(msg['scheduled_time'])
-                except:
+                except Exception as e:
+                    logger.error(f"❌ Erro ao parsear data da msg {msg['id']}: {e}")
                     continue
 
-                # Comparar apenas ano, mês, dia, hora, minuto (ignorar segundos)
-                now_rounded = now.replace(second=0, microsecond=0)
-                scheduled_rounded = scheduled_time.replace(second=0, microsecond=0)
+                # Comparar ano, mês, dia, hora, minuto (ignorar segundos)
+                now_key = (now.year, now.month, now.day, now.hour, now.minute)
+                sched_key = (scheduled_time.year, scheduled_time.month, scheduled_time.day, scheduled_time.hour, scheduled_time.minute)
 
-                time_diff = (now_rounded - scheduled_rounded).total_seconds()
+                # Verificar se já enviamos essa mensagem neste minuto
+                last_sent_key = f"{msg['id']}_{now_key}"
+                if last_sent_key in self._last_checked:
+                    continue
 
-                # Enviar se a diferença for entre 0 e 30 segundos
-                if 0 <= time_diff <= 30:
+                # Verifica se é hora de enviar (mesmo minuto exato)
+                if now_key == sched_key:
+                    logger.info(f"🎯 Hora de enviar msg {msg['id']}! Agendado: {scheduled_time.strftime('%d/%m %H:%M')} | Agora: {now.strftime('%d/%m %H:%M')}")
                     await self._send_message(msg)
+                    self._last_checked[last_sent_key] = True
 
         except Exception as e:
             logger.error(f"Erro no scheduler: {e}")
@@ -95,7 +104,7 @@ class MessageScheduler:
 
             # Log de sucesso
             self.db.log_message(msg['id'], msg['guild_id'], msg['channel_id'], 'success')
-            logger.info(f"✅ Mensagem {msg['id']} enviada no canal {msg['channel_id']} às {datetime.now().strftime('%H:%M:%S')}")
+            logger.info(f"✅ Mensagem {msg['id']} enviada no canal {msg['channel_id']}")
 
             # Tratar recorrência
             await self._handle_recurrence(msg)
@@ -114,30 +123,25 @@ class MessageScheduler:
         recurrence = msg['recurrence']
 
         if recurrence == 'once':
-            # Desativa mensagem única
             self.db.update_message(msg['id'], is_active=0)
-            logger.info(f"📝 Mensagem {msg['id']} (única) desativada após envio")
+            logger.info(f"📝 Mensagem {msg['id']} (única) desativada")
 
         elif recurrence == 'daily':
-            # Próximo dia
             next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(days=1)
             self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
             logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
 
         elif recurrence == 'weekly':
-            # Próxima semana (mesmo dia da semana)
             next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(weeks=1)
             self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
             logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
 
         elif recurrence == 'loop':
-            # LOOP: sempre a próxima semana no mesmo dia e horário
             next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(weeks=1)
             self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
             logger.info(f"🔁 LOOP: Mensagem {msg['id']} reagendada para {next_time}")
 
         elif recurrence == 'custom':
-            # Recorrência personalizada
             try:
                 import json
                 data = json.loads(msg['recurrence_data'] or '{}')
@@ -149,7 +153,6 @@ class MessageScheduler:
                 self.db.update_message(msg['id'], is_active=0)
 
         elif recurrence == 'count':
-            # Limite de envios
             try:
                 import json
                 data = json.loads(msg['recurrence_data'] or '{}')

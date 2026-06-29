@@ -37,7 +37,6 @@ class MessageScheduler:
     async def check_scheduled_messages(self):
         """Verifica e envia mensagens agendadas a cada 30 segundos"""
         try:
-            # Usar datetime.now() (hora local do servidor - Brasília UTC-3)
             now = datetime.now()
             messages = self.db.get_scheduled_messages(active_only=True)
 
@@ -48,14 +47,12 @@ class MessageScheduler:
                     continue
 
                 # Comparar apenas ano, mês, dia, hora, minuto (ignorar segundos)
-                # Arredondar ambos para o minuto mais próximo
                 now_rounded = now.replace(second=0, microsecond=0)
                 scheduled_rounded = scheduled_time.replace(second=0, microsecond=0)
 
-                # Verifica se é hora de enviar (dentro da mesma janela de 1 minuto)
                 time_diff = (now_rounded - scheduled_rounded).total_seconds()
 
-                # Enviar se a diferença for entre 0 e 30 segundos (evita enviar antes)
+                # Enviar se a diferença for entre 0 e 30 segundos
                 if 0 <= time_diff <= 30:
                     await self._send_message(msg)
 
@@ -128,10 +125,16 @@ class MessageScheduler:
             logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
 
         elif recurrence == 'weekly':
-            # Próxima semana
+            # Próxima semana (mesmo dia da semana)
             next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(weeks=1)
             self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
             logger.info(f"🔄 Mensagem {msg['id']} reagendada para {next_time}")
+
+        elif recurrence == 'loop':
+            # LOOP: sempre a próxima semana no mesmo dia e horário
+            next_time = datetime.fromisoformat(msg['scheduled_time']) + timedelta(weeks=1)
+            self.db.update_message(msg['id'], scheduled_time=next_time.isoformat())
+            logger.info(f"🔁 LOOP: Mensagem {msg['id']} reagendada para {next_time}")
 
         elif recurrence == 'custom':
             # Recorrência personalizada

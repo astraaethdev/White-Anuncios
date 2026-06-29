@@ -28,19 +28,14 @@ class SlashCommands(commands.Cog):
         canal="Canal onde a mensagem será enviada",
         data="Data/hora (DD/MM/YYYY HH:MM ou HH:MM)",
         mensagem="Conteúdo da mensagem",
-        recorrencia="Tipo de recorrência"
+        loop="Repetir toda semana no mesmo dia e horário?"
     )
-    @app_commands.choices(recorrencia=[
-        app_commands.Choice(name="Única", value="once"),
-        app_commands.Choice(name="Diária", value="daily"),
-        app_commands.Choice(name="Semanal", value="weekly")
-    ])
     @app_commands.checks.has_permissions(manage_messages=True)
     async def slash_agendar_texto(self, interaction: discord.Interaction, 
                                    canal: discord.TextChannel, 
                                    data: str, 
                                    mensagem: str,
-                                   recorrencia: app_commands.Choice[str] = None):
+                                   loop: bool = False):
         """Agenda uma mensagem de texto via slash command"""
 
         scheduled_time = parse_datetime(data)
@@ -58,7 +53,7 @@ class SlashCommands(commands.Cog):
                 ephemeral=True
             )
 
-        rec = recorrencia.value if recorrencia else 'once'
+        recurrence = 'loop' if loop else 'once'
 
         message_id = self.db.add_scheduled_message(
             guild_id=interaction.guild_id,
@@ -66,7 +61,7 @@ class SlashCommands(commands.Cog):
             author_id=interaction.user.id,
             content=mensagem,
             scheduled_time=scheduled_time.isoformat(),
-            recurrence=rec
+            recurrence=recurrence
         )
 
         embed = discord.Embed(
@@ -77,7 +72,7 @@ class SlashCommands(commands.Cog):
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=canal.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
-        embed.add_field(name="🔄 Recorrência", value=rec.replace('once', 'Única').replace('daily', 'Diária').replace('weekly', 'Semanal'), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
         embed.add_field(name="📝 Conteúdo", value=truncate_text(mensagem, 500), inline=False)
         embed.set_footer(text=f"Agendado por {interaction.user}", icon_url=interaction.user.display_avatar.url)
 
@@ -91,13 +86,8 @@ class SlashCommands(commands.Cog):
         descricao="Descrição do embed",
         cor="Cor em hex (ex: #FF5733)",
         imagem="URL da imagem (opcional)",
-        recorrencia="Tipo de recorrência"
+        loop="Repetir toda semana no mesmo dia e horário?"
     )
-    @app_commands.choices(recorrencia=[
-        app_commands.Choice(name="Única", value="once"),
-        app_commands.Choice(name="Diária", value="daily"),
-        app_commands.Choice(name="Semanal", value="weekly")
-    ])
     @app_commands.checks.has_permissions(manage_messages=True)
     async def slash_agendar_embed(self, interaction: discord.Interaction,
                                    canal: discord.TextChannel,
@@ -106,7 +96,7 @@ class SlashCommands(commands.Cog):
                                    descricao: str,
                                    cor: str = None,
                                    imagem: str = None,
-                                   recorrencia: app_commands.Choice[str] = None):
+                                   loop: bool = False):
         """Agenda um embed via slash command"""
 
         scheduled_time = parse_datetime(data)
@@ -130,7 +120,7 @@ class SlashCommands(commands.Cog):
         if imagem:
             embed_data["image"] = {"url": imagem}
 
-        rec = recorrencia.value if recorrencia else 'once'
+        recurrence = 'loop' if loop else 'once'
 
         message_id = self.db.add_scheduled_message(
             guild_id=interaction.guild_id,
@@ -139,7 +129,7 @@ class SlashCommands(commands.Cog):
             content="",
             scheduled_time=scheduled_time.isoformat(),
             embed_data=json.dumps(embed_data),
-            recurrence=rec
+            recurrence=recurrence
         )
 
         preview = discord.Embed.from_dict(embed_data)
@@ -153,6 +143,7 @@ class SlashCommands(commands.Cog):
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=canal.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
 
         await interaction.response.send_message(embeds=[embed, preview])
 
@@ -160,13 +151,15 @@ class SlashCommands(commands.Cog):
     @app_commands.describe(
         canal="Canal do anúncio",
         data="Data/hora (DD/MM/YYYY HH:MM)",
-        mensagem="Conteúdo do anúncio"
+        mensagem="Conteúdo do anúncio",
+        loop="Repetir toda semana no mesmo dia e horário?"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def slash_agendar_anuncio(self, interaction: discord.Interaction,
                                      canal: discord.TextChannel,
                                      data: str,
-                                     mensagem: str):
+                                     mensagem: str,
+                                     loop: bool = False):
         """Agenda um anúncio com @everyone"""
 
         scheduled_time = parse_datetime(data)
@@ -177,12 +170,15 @@ class SlashCommands(commands.Cog):
 
         full_content = f"@everyone\n\n{mensagem}"
 
+        recurrence = 'loop' if loop else 'once'
+
         message_id = self.db.add_scheduled_message(
             guild_id=interaction.guild_id,
             channel_id=canal.id,
             author_id=interaction.user.id,
             content=full_content,
-            scheduled_time=scheduled_time.isoformat()
+            scheduled_time=scheduled_time.isoformat(),
+            recurrence=recurrence
         )
 
         embed = discord.Embed(
@@ -193,6 +189,7 @@ class SlashCommands(commands.Cog):
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=canal.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
         embed.add_field(name="📝 Preview", value=truncate_text(mensagem, 300), inline=False)
 
         await interaction.response.send_message(embed=embed)
@@ -226,7 +223,8 @@ class SlashCommands(commands.Cog):
                 ch_name = channel.mention if channel else f"`{msg['channel_id']}`"
                 time_str = format_datetime(datetime.fromisoformat(msg['scheduled_time']))
                 preview = truncate_text(msg['content'] or "[Embed]", 40)
-                active_text += f"`#{msg['id']}` {ch_name} | {time_str} | {preview}\n"
+                loop_icon = "🔁" if msg['recurrence'] == 'loop' else ""
+                active_text += f"`#{msg['id']}` {loop_icon} {ch_name} | {time_str} | {preview}\n"
 
             if len(active) > 10:
                 active_text += f"\n...e mais {len(active) - 10}"
@@ -291,7 +289,18 @@ class SlashCommands(commands.Cog):
         embed.add_field(name="📺 Canal", value=channel.mention if channel else "N/A", inline=True)
         embed.add_field(name="👤 Autor", value=author.mention if author else f"`{msg['author_id']}`", inline=True)
         embed.add_field(name="⏰ Agendado para", value=format_datetime(datetime.fromisoformat(msg['scheduled_time'])), inline=True)
-        embed.add_field(name="🔄 Recorrência", value=msg['recurrence'].replace('once', 'Única').replace('daily', 'Diária').replace('weekly', 'Semanal'), inline=True)
+
+        rec_display = msg['recurrence']
+        if rec_display == 'loop':
+            rec_display = "🔁 Loop (toda semana)"
+        elif rec_display == 'once':
+            rec_display = "Única"
+        elif rec_display == 'daily':
+            rec_display = "Diária"
+        elif rec_display == 'weekly':
+            rec_display = "Semanal"
+
+        embed.add_field(name="🔄 Recorrência", value=rec_display, inline=True)
         embed.add_field(name="📊 Envios", value=f"{msg['send_count'] or 0} vez(es)", inline=True)
         embed.add_field(name="📌 Status", value="🟢 Ativa" if msg['is_active'] else "⚫ Inativa", inline=True)
         embed.add_field(name="📝 Conteúdo", value=truncate_text(msg['content'] or "[Embed]", 500), inline=False)
@@ -463,6 +472,15 @@ class SlashCommands(commands.Cog):
         )
 
         embed.add_field(
+            name="🔁 Loop (repetição semanal)",
+            value=(
+                "Nos comandos `/agendar-texto`, `/agendar-embed` e `/agendar-anuncio`\n"
+                "ative a opção **loop** para repetir toda semana no mesmo dia e horário!"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
             name="📢 Anúncios",
             value=(
                 "`/anuncio-rapido` - Anúncio instantâneo\n"
@@ -489,7 +507,7 @@ class SlashCommands(commands.Cog):
             inline=False
         )
 
-        embed.set_footer(text="v2.1.3 | Slash Commands")
+        embed.set_footer(text="v2.2.0 | Slash Commands + Loop")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="horario", description="🕐 Mostra a hora atual")

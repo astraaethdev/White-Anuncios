@@ -30,14 +30,22 @@ class ScheduledMessages(commands.Cog):
         embed.add_field(
             name="Comandos disponíveis:",
             value=(
-                "`!agendar texto` - Agendar mensagem de texto\n"
-                "`!agendar embed` - Agendar mensagem com embed\n"
-                "`!agendar anuncio` - Agendar anúncio com @everyone\n"
-                "`!agendar lista` - Ver mensagens agendadas\n"
-                "`!agendar info` - Detalhes de uma mensagem\n"
-                "`!agendar editar` - Editar mensagem agendada\n"
-                "`!agendar remover` - Remover mensagem agendada"
+                "`!agendar texto #canal data mensagem` - Texto\n"
+                "`!agendar texto #canal data mensagem --loop` - Texto com loop\n"
+                "`!agendar embed #canal data` - Embed\n"
+                "`!agendar embed #canal data --loop` - Embed com loop\n"
+                "`!agendar anuncio #canal data mensagem` - Anúncio\n"
+                "`!agendar anuncio #canal data mensagem --loop` - Anúncio com loop\n"
+                "`!agendar lista` - Listar\n"
+                "`!agendar info <id>` - Detalhes\n"
+                "`!agendar editar <id>` - Editar\n"
+                "`!agendar remover <id>` - Remover"
             ),
+            inline=False
+        )
+        embed.add_field(
+            name="🔁 O que é loop?",
+            value="Quando ativado, a mensagem se repete **toda semana** no mesmo dia e horário!",
             inline=False
         )
         embed.add_field(
@@ -50,7 +58,16 @@ class ScheduledMessages(commands.Cog):
     @schedule_group.command(name="texto")
     @commands.has_permissions(manage_messages=True)
     async def schedule_text(self, ctx, channel: discord.TextChannel, datetime_str: str, *, content: str):
-        """📝 Agenda uma mensagem de texto"""
+        """📝 Agenda uma mensagem de texto. Adicione --loop no final para repetir toda semana."""
+        # Verificar se tem --loop no conteúdo
+        loop = False
+        if content.endswith(" --loop"):
+            loop = True
+            content = content[:-7].strip()
+        elif content.endswith("--loop"):
+            loop = True
+            content = content[:-6].strip()
+
         scheduled_time = parse_datetime(datetime_str)
         if not scheduled_time:
             return await ctx.send("❌ Formato inválido! Use: `DD/MM/YYYY HH:MM` ou `HH:MM`")
@@ -60,18 +77,22 @@ class ScheduledMessages(commands.Cog):
         if len(guild_messages) >= settings['max_messages']:
             return await ctx.send(f"⚠️ Limite de {settings['max_messages']} mensagens atingido!")
 
+        recurrence = 'loop' if loop else 'once'
+
         message_id = self.db.add_scheduled_message(
             guild_id=ctx.guild.id,
             channel_id=channel.id,
             author_id=ctx.author.id,
             content=content,
-            scheduled_time=scheduled_time.isoformat()
+            scheduled_time=scheduled_time.isoformat(),
+            recurrence=recurrence
         )
 
         embed = discord.Embed(title="✅ Mensagem Agendada", color=Config.COLOR_SUCCESS)
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=channel.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
         embed.add_field(name="📝 Conteúdo", value=truncate_text(content, 500), inline=False)
         embed.set_footer(text=f"Agendado por {ctx.author}", icon_url=ctx.author.display_avatar.url)
 
@@ -79,8 +100,17 @@ class ScheduledMessages(commands.Cog):
 
     @schedule_group.command(name="embed")
     @commands.has_permissions(manage_messages=True)
-    async def schedule_embed(self, ctx, channel: discord.TextChannel, datetime_str: str):
-        """🎨 Agenda uma mensagem com embed interativo"""
+    async def schedule_embed(self, ctx, channel: discord.TextChannel, datetime_str: str, *, args: str = ""):
+        """🎨 Agenda uma mensagem com embed. Adicione --loop no final para repetir toda semana."""
+        # Verificar se tem --loop
+        loop = False
+        if args.endswith(" --loop"):
+            loop = True
+            args = args[:-7].strip()
+        elif args.endswith("--loop"):
+            loop = True
+            args = args[:-6].strip()
+
         scheduled_time = parse_datetime(datetime_str)
         if not scheduled_time:
             return await ctx.send("❌ Formato de data inválido!")
@@ -138,27 +168,7 @@ class ScheduledMessages(commands.Cog):
         if footer_msg.content.lower() != 'pular':
             embed_data["footer"] = {"text": footer_msg.content}
 
-        await ctx.send("🔄 A mensagem será **recorrente**? Responda: `nao`, `diaria`, `semanal` ou `personalizada`:")
-        try:
-            rec_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
-        except asyncio.TimeoutError:
-            rec_msg = type('obj', (object,), {'content': 'nao'})
-
-        recurrence = 'once'
-        recurrence_data = None
-
-        if rec_msg.content.lower() == 'diaria':
-            recurrence = 'daily'
-        elif rec_msg.content.lower() == 'semanal':
-            recurrence = 'weekly'
-        elif rec_msg.content.lower() == 'personalizada':
-            await ctx.send("📅 Digite o intervalo em **dias** (ex: `3`):")
-            try:
-                interval_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
-                recurrence = 'custom'
-                recurrence_data = json.dumps({"interval_days": int(interval_msg.content)})
-            except:
-                recurrence = 'once'
+        recurrence = 'loop' if loop else 'once'
 
         message_id = self.db.add_scheduled_message(
             guild_id=ctx.guild.id,
@@ -167,8 +177,7 @@ class ScheduledMessages(commands.Cog):
             content="",
             scheduled_time=scheduled_time.isoformat(),
             embed_data=json.dumps(embed_data),
-            recurrence=recurrence,
-            recurrence_data=recurrence_data
+            recurrence=recurrence
         )
 
         preview_embed = discord.Embed.from_dict(embed_data)
@@ -179,7 +188,7 @@ class ScheduledMessages(commands.Cog):
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=channel.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
-        embed.add_field(name="🔄 Recorrência", value=recurrence.replace('once', 'Única').replace('daily', 'Diária').replace('weekly', 'Semanal').replace('custom', 'Personalizada'), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
         embed.set_footer(text=f"Agendado por {ctx.author}", icon_url=ctx.author.display_avatar.url)
 
         await ctx.send(embed=embed)
@@ -187,25 +196,38 @@ class ScheduledMessages(commands.Cog):
     @schedule_group.command(name="anuncio")
     @commands.has_permissions(administrator=True)
     async def schedule_announcement(self, ctx, channel: discord.TextChannel, datetime_str: str, *, content: str):
-        """📢 Agenda um anúncio com @everyone"""
+        """📢 Agenda um anúncio com @everyone. Adicione --loop no final para repetir toda semana."""
+        # Verificar se tem --loop
+        loop = False
+        if content.endswith(" --loop"):
+            loop = True
+            content = content[:-7].strip()
+        elif content.endswith("--loop"):
+            loop = True
+            content = content[:-6].strip()
+
         scheduled_time = parse_datetime(datetime_str)
         if not scheduled_time:
             return await ctx.send("❌ Formato de data inválido!")
 
         full_content = f"@everyone\n\n{content}"
 
+        recurrence = 'loop' if loop else 'once'
+
         message_id = self.db.add_scheduled_message(
             guild_id=ctx.guild.id,
             channel_id=channel.id,
             author_id=ctx.author.id,
             content=full_content,
-            scheduled_time=scheduled_time.isoformat()
+            scheduled_time=scheduled_time.isoformat(),
+            recurrence=recurrence
         )
 
         embed = discord.Embed(title="📢 Anúncio Agendado", color=Config.COLOR_WARNING)
         embed.add_field(name="🆔 ID", value=f"`{message_id}`", inline=True)
         embed.add_field(name="📺 Canal", value=channel.mention, inline=True)
         embed.add_field(name="⏰ Data/Hora", value=format_datetime(scheduled_time), inline=True)
+        embed.add_field(name="🔁 Loop", value="✅ Ativado (toda semana)" if loop else "❌ Desativado", inline=True)
         embed.add_field(name="📝 Preview", value=truncate_text(content, 300), inline=False)
         embed.set_footer(text=f"Agendado por {ctx.author}", icon_url=ctx.author.display_avatar.url)
 
@@ -233,7 +255,8 @@ class ScheduledMessages(commands.Cog):
                 ch_name = channel.mention if channel else f"`{msg['channel_id']}`"
                 time_str = format_datetime(datetime.fromisoformat(msg['scheduled_time']))
                 preview = truncate_text(msg['content'] or "[Embed]", 40)
-                active_text += f"`#{msg['id']}` {ch_name} | {time_str} | {preview}\n"
+                loop_icon = "🔁" if msg['recurrence'] == 'loop' else ""
+                active_text += f"`#{msg['id']}` {loop_icon} {ch_name} | {time_str} | {preview}\n"
             if len(active) > 10:
                 active_text += f"\n...e mais {len(active) - 10}"
             embed.add_field(name=f"🟢 Ativas ({len(active)})", value=active_text, inline=False)
@@ -261,7 +284,20 @@ class ScheduledMessages(commands.Cog):
         embed.add_field(name="📺 Canal", value=channel.mention if channel else "N/A", inline=True)
         embed.add_field(name="👤 Autor", value=author.mention if author else f"`{msg['author_id']}`", inline=True)
         embed.add_field(name="⏰ Agendado para", value=format_datetime(datetime.fromisoformat(msg['scheduled_time'])), inline=True)
-        embed.add_field(name="🔄 Recorrência", value=msg['recurrence'].replace('once', 'Única').replace('daily', 'Diária').replace('weekly', 'Semanal'), inline=True)
+
+        rec_display = msg['recurrence']
+        if rec_display == 'loop':
+            rec_display = "🔁 Loop (toda semana)"
+        elif rec_display == 'once':
+            rec_display = "Única"
+        elif rec_display == 'daily':
+            rec_display = "Diária"
+        elif rec_display == 'weekly':
+            rec_display = "Semanal"
+        else:
+            rec_display = rec_display.replace('once', 'Única').replace('daily', 'Diária').replace('weekly', 'Semanal')
+
+        embed.add_field(name="🔄 Recorrência", value=rec_display, inline=True)
         embed.add_field(name="📊 Envios", value=f"{msg['send_count'] or 0} vez(es)", inline=True)
         embed.add_field(name="📌 Status", value="🟢 Ativa" if msg['is_active'] else "⚫ Inativa", inline=True)
         embed.add_field(name="📝 Conteúdo", value=truncate_text(msg['content'] or "[Embed]", 500), inline=False)
@@ -286,7 +322,7 @@ class ScheduledMessages(commands.Cog):
 
         embed = discord.Embed(
             title=f"✏️ Editar Mensagem #{message_id}",
-            description="O que deseja editar?\n1️⃣ Conteúdo\n2️⃣ Data/Hora\n3️⃣ Canal\n4️⃣ Cancelar",
+            description="O que deseja editar?\n1️⃣ Conteúdo\n2️⃣ Data/Hora\n3️⃣ Canal\n4️⃣ Loop (on/off)\n5️⃣ Cancelar",
             color=Config.COLOR_WARNING
         )
         await ctx.send(embed=embed)
@@ -334,6 +370,18 @@ class ScheduledMessages(commands.Cog):
 
             self.db.update_message(message_id, channel_id=channel.id)
             await ctx.send(f"✅ Canal atualizado para {channel.mention}!")
+
+        elif choice == '4':
+            await ctx.send("🔁 Digite `on` para ativar loop ou `off` para desativar:")
+            try:
+                loop_msg = await self.bot.wait_for('message', timeout=60.0, check=lambda m: m.author == ctx.author and m.channel == ctx.channel)
+            except asyncio.TimeoutError:
+                return await ctx.send("⏰ Tempo esgotado!")
+
+            loop_on = loop_msg.content.lower() in ['on', 'sim', 'yes', 'true']
+            recurrence = 'loop' if loop_on else 'once'
+            self.db.update_message(message_id, recurrence=recurrence)
+            await ctx.send(f"✅ Loop {'ativado' if loop_on else 'desativado'}!")
 
         else:
             await ctx.send("❌ Edição cancelada.")

@@ -3,12 +3,12 @@
 """
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 def parse_datetime(date_string: str) -> Optional[datetime]:
     """
-    Parse de data/hora em vários formatos (fuso horário de Brasília)
+    Parse de data/hora em vários formatos (retorna UTC para o scheduler)
     Formatos suportados:
     - DD/MM/YYYY HH:MM
     - DD-MM-YYYY HH:MM
@@ -27,9 +27,13 @@ def parse_datetime(date_string: str) -> Optional[datetime]:
         try:
             result = datetime.strptime(date_string, fmt)
             if fmt == "%H:%M":
-                # Usa data de hoje (Brasília)
+                # Usa data de hoje (Brasília UTC-3)
                 now = datetime.now()
                 result = result.replace(year=now.year, month=now.month, day=now.day)
+
+            # O usuário digita em horário de Brasília (UTC-3)
+            # Adiciona 3 horas para converter para UTC (que é o horário do servidor Railway)
+            result = result + timedelta(hours=3)
             return result
         except ValueError:
             continue
@@ -37,8 +41,10 @@ def parse_datetime(date_string: str) -> Optional[datetime]:
     return None
 
 def format_datetime(dt: datetime) -> str:
-    """Formata datetime para exibição"""
-    return dt.strftime("%d/%m/%Y às %H:%M")
+    """Formata datetime para exibição (converte UTC de volta para Brasília)"""
+    # Subtrai 3 horas para mostrar no horário de Brasília
+    local_dt = dt - timedelta(hours=3)
+    return local_dt.strftime("%d/%m/%Y às %H:%M")
 
 def is_valid_url(url: str) -> bool:
     """Verifica se é uma URL válida"""
